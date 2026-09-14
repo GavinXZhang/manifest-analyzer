@@ -155,6 +155,20 @@ export interface Profile {
   sellThroughProbability: number;
   /** User's estimated federal marginal income-tax rate (for the MA set-aside estimator). */
   estimatedFederalRate: number;
+  /** Revenue target per month; drives the goal ghost-bar on the Money chart (null = no goal). */
+  monthlyRevenueGoal: number | null;
+  /** Days on shelf before an item is flagged. */
+  agingWarnDays: number;
+  /** Days on shelf before a price cut is suggested. */
+  agingCutDays: number;
+  /** Fraction taken off every active ask by "Cut price" (0.1 = 10%). */
+  priceCutFraction: number;
+  /** Days a won lot may sit unchecked before it is flagged. */
+  checkinOverdueDays: number;
+  /** $/hour used to cost labor per lot; null = trailing profit per hour. */
+  hourlyValue: number | null;
+  /** IANA zone for day bucketing (time card, due dates). */
+  timeZone: string;
 }
 
 export function defaultProfile(): Profile {
@@ -170,6 +184,13 @@ export function defaultProfile(): Profile {
     conservativeFloorRate: 0.1,
     sellThroughProbability: 0.9,
     estimatedFederalRate: 0.12,
+    monthlyRevenueGoal: null,
+    agingWarnDays: 21,
+    agingCutDays: 30,
+    priceCutFraction: 0.1,
+    checkinOverdueDays: 7,
+    hourlyValue: null,
+    timeZone: 'America/New_York',
   };
 }
 

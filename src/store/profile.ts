@@ -37,6 +37,23 @@ function validateProfile(p: Profile): void {
   if (p.maxSpendPerLot !== null && (!Number.isFinite(p.maxSpendPerLot) || p.maxSpendPerLot < 0)) {
     throw new Error('maxSpendPerLot must be a non-negative number or null');
   }
+  for (const key of ['monthlyRevenueGoal', 'hourlyValue'] as const) {
+    if (p[key] !== null && (!Number.isFinite(p[key]) || p[key]! < 0)) {
+      throw new Error(`${key} must be a non-negative number or null`);
+    }
+  }
+  for (const key of ['agingWarnDays', 'agingCutDays', 'checkinOverdueDays'] as const) {
+    if (!Number.isInteger(p[key]) || p[key] < 0) throw new Error(`${key} must be a whole number ≥ 0`);
+  }
+  if (p.agingCutDays < p.agingWarnDays) throw new Error('agingCutDays must be ≥ agingWarnDays');
+  if (!Number.isFinite(p.priceCutFraction) || p.priceCutFraction <= 0 || p.priceCutFraction >= 1) {
+    throw new Error('priceCutFraction must be between 0 and 1');
+  }
+  try {
+    new Intl.DateTimeFormat('en-US', { timeZone: p.timeZone });
+  } catch {
+    throw new Error(`Unknown time zone "${p.timeZone}"`);
+  }
   if (p.requiredProfit.kind === 'absolute') {
     if (!Number.isFinite(p.requiredProfit.amount) || p.requiredProfit.amount < 0) {
       throw new Error('requiredProfit.amount must be a non-negative number');

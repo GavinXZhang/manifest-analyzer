@@ -7,3 +7,7 @@ data/
 .DS_Store
 .vercel
 .env*
+.playwright-mcp/
+api/app.mjs
+web/dist/
+web/dev-dist/

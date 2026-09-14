@@ -20,12 +20,20 @@
     "@anthropic-ai/sdk": "^0.120.0",
     "@libsql/client": "^0.17.4",
     "exceljs": "^4.4.0",
-    "express": "^5.1.0"
+    "express": "^5.1.0",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "react-router-dom": "^7.18.3"
   },
   "devDependencies": {
     "@types/express": "^5.0.1",
     "@types/node": "^24.3.0",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.1.1",
     "esbuild": "^0.28.2",
-    "typescript": "^5.7.3"
+    "typescript": "^5.7.3",
+    "vite": "^8.3.0",
+    "vite-plugin-pwa": "^1.3.0"
   }
 }

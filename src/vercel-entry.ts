@@ -21,7 +21,8 @@ const appPromise = (async () => {
   const db = await openDb(url, authToken);
   return createApp(db, {
     password: process.env.MA_PASSWORD ?? null,
-    publicDir: join(process.cwd(), 'src', 'ui', 'public'),
+    publicDir: join(process.cwd(), 'web', 'dist'),
+    legacyDir: join(process.cwd(), 'src', 'ui', 'public'),
   });
 })();
 

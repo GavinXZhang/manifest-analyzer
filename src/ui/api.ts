@@ -31,7 +31,8 @@ import {
   getComps,
   setCurrentRetail,
 } from '../store/lots.ts';
-import { recordOutcome, listSegmentOutcomes } from '../store/outcomes.ts';
+import { recordOutcome, listSegmentOutcomes, getOutcome } from '../store/outcomes.ts';
+import { getStage, setStage } from '../store/stages.ts';
 import {
   addSale,
   deleteSale,
@@ -98,7 +99,13 @@ function badRequest(err: unknown, fallback: string): never {
   throw new HttpError(400, err instanceof Error ? err.message : fallback);
 }
 
-export function createApi(db: Db): Router {
+export interface LegacyApi {
+  router: Router;
+  /** Claude-drafted listing for an inventory item, or null when no API key is configured. */
+  aiDraft: ((itemId: number, style: string, instructions?: string) => Promise<string>) | undefined;
+}
+
+export function createApi(db: Db): LegacyApi {
   const api = Router();
   api.use(json({ limit: '5mb' }));
 
@@ -162,7 +169,7 @@ export function createApi(db: Db): Router {
     const lots = await listLots(db);
     res.json(
       await Promise.all(
-        lots.map(async (lot) => ({ ...lot, itemCount: (await getLineItems(db, lot.id)).length })),
+        lots.map(async (lot) => ({ ...lot, stage: await getStage(db, lot.id), itemCount: (await getLineItems(db, lot.id)).length })),
       ),
     );
   });
@@ -178,7 +185,7 @@ export function createApi(db: Db): Router {
             sampleRows: rawFile.rows.slice(0, 5),
           }
         : null;
-    res.json({ lot, items: await getLineItems(db, lot.id), pendingMapping });
+    res.json({ lot: { ...lot, stage: await getStage(db, lot.id) }, items: await getLineItems(db, lot.id), pendingMapping, outcome: await getOutcome(db, lot.id) });
   });
 
   api.delete('/lots/:id', async (req, res) => {
@@ -353,6 +360,13 @@ export function createApi(db: Db): Router {
       predictedRevenue: analysis.valuation.expectedRevenue.amount,
       predictedMaxBid: analysis.verdict.maxBid?.amount ?? null,
     });
+
+    // Lifecycle: a won lot is waiting to be checked in; a lost one is done.
+    // Lots already past "won" (received/selling) keep their stage when the
+    // outcome is merely re-saved with a corrected price.
+    const currentStage = await getStage(db, lot.id);
+    if (!outcome.won) await setStage(db, lot.id, 'closed');
+    else if (currentStage === 'analyzing' || currentStage === 'bid_placed' || currentStage === 'closed') await setStage(db, lot.id, 'won');
 
     await deleteAutoExpenses(db, lot.id);
     if (outcome.won && outcome.finalPrice !== null && outcome.finalPrice > 0) {
@@ -728,65 +742,75 @@ export function createApi(db: Db): Router {
     ? new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
     : null;
 
-  const LISTING_SYSTEM = `You write Facebook Marketplace listings for a small local furniture reseller in Massachusetts who flips Costco liquidation furniture. Given item data as JSON, write one listing that sells.
+  const LISTING_BASE = `You write resale listings for a small local reseller in Massachusetts who flips liquidation stock (customer returns in good shape — never claim brand new unless the data says so). Given item data as JSON, write one listing that sells. Output only the listing text itself: no preamble, no markdown headers, no commentary.`;
 
-Include, in a natural order: an attention-grabbing first line naming the item; price anchoring against the current retail price when provided ("$X at Costco — yours for $Y"); two to four short lines on the features buyers care about, drawn from the item description; an honest condition note (these are customer returns / liquidation stock in good shape — never claim brand new unless the data says so); logistics (local pickup, delivery available for a small fee, cash / Venmo / Zelle); and a closing call to action.
+  const LISTING_STYLES: Record<string, string> = {
+    casual: `Channel: Facebook Marketplace. Include, in a natural order: an attention-grabbing first line naming the item; price anchoring against the current retail price when provided ("$X retail — yours for $Y"); two to four short lines on the features buyers care about; an honest condition note; logistics (local pickup, delivery available for a small fee, cash / Venmo / Zelle); a closing call to action. Voice: warm, direct, trustworthy local seller — not corporate, not spammy, no ALL CAPS. At most three emoji. 80–160 words.`,
+    ebay: `Channel: eBay. First line is the title: at most 80 characters, brand + model + key spec, no filler words, no emoji. Then a blank line, then: condition (be specific about what was tested and any wear), what is included, item specifics as short "Label: value" lines, shipping note (ships within 1 business day, carefully packed). No emoji. 80–160 words after the title.`,
+    short: `Channel: OfferUp / Mercari. Two to four short sentences: what it is, condition, price if provided, local pickup or shipped. No emoji, no hashtags.`,
+    furniture: `Channel: AptDeco. Include dimensions, materials and brand if known (use [DIMENSIONS] as a placeholder if not), condition with specific wear notes, original retail if provided, and a pickup/delivery line. Calm, descriptive tone. 80–140 words.`,
+    plain: `Channel: Craigslist. Plain text only, no links, no emoji. Title line with price, then condition, what is included, and "cash on pickup". Under 100 words.`,
+  };
 
-Voice: warm, direct, trustworthy local seller — not corporate, not spammy, no ALL CAPS. At most three emoji. 80–160 words. Output only the listing text itself: no preamble, no markdown headers, no commentary.`;
+  /** Draft a listing with Claude in the channel's voice. Undefined when no key is configured. */
+  const aiDraft = anthropic
+    ? async (itemId: number, style: string, instructions?: string): Promise<string> => {
+        const item = await getInventoryItem(db, itemId);
+        if (!item) throw new HttpError(404, `No inventory item ${itemId}`);
+        const profile = await getProfile(db);
+        const margin = profile.requiredProfit.kind === 'percent' ? profile.requiredProfit.percent : 0.3;
+        const asking = item.cost !== null ? targetPrice(item.cost, profile.sellingFeeRate, margin) : null;
+        const response = await anthropic.beta.messages.create({
+          model: AI_MODEL,
+          max_tokens: 16000,
+          betas: ['server-side-fallback-2026-06-01'],
+          fallbacks: [{ model: 'claude-opus-4-8' }],
+          output_config: { effort: 'low' },
+          system: `${LISTING_BASE}\n\n${LISTING_STYLES[style] ?? LISTING_STYLES.casual}`,
+          messages: [
+            {
+              role: 'user',
+              content: JSON.stringify({
+                item: {
+                  name: item.name,
+                  quantityAvailable: item.qty - item.qtySold,
+                  condition: item.condition,
+                  kind: item.kind,
+                  description: item.description,
+                  currentRetailPrice: item.currentRetail,
+                  askingPrice: asking,
+                },
+                sellerNotes: instructions ?? null,
+              }),
+            },
+          ],
+        });
+        if (response.stop_reason === 'refusal') {
+          throw new HttpError(502, 'The model declined this request — use the template draft instead');
+        }
+        const text = response.content
+          .filter((b): b is Anthropic.Beta.BetaTextBlock => b.type === 'text')
+          .map((b) => b.text)
+          .join('\n')
+          .trim();
+        if (!text) throw new HttpError(502, 'The model returned no text — try again');
+        return text;
+      }
+    : undefined;
 
   api.get('/ai-status', (_req, res) => {
     res.json({ enabled: anthropic !== null, model: AI_MODEL });
   });
 
   api.post('/listings/:itemId/ai', async (req, res) => {
-    if (!anthropic) {
+    if (!aiDraft) {
       throw new HttpError(
         409,
         'AI drafting is not set up yet — add an ANTHROPIC_API_KEY to enable it (the template draft still works)',
       );
     }
-    const item = await getInventoryItem(db, Number(req.params.itemId));
-    if (!item) throw new HttpError(404, `No inventory item ${req.params.itemId}`);
-    const profile = await getProfile(db);
-    const margin = profile.requiredProfit.kind === 'percent' ? profile.requiredProfit.percent : 0.3;
-    const asking =
-      item.cost !== null ? targetPrice(item.cost, profile.sellingFeeRate, margin) : null;
-    const extra = (req.body as { instructions?: string } | undefined)?.instructions;
-
-    const response = await anthropic.beta.messages.create({
-      model: AI_MODEL,
-      max_tokens: 16000,
-      betas: ['server-side-fallback-2026-06-01'],
-      fallbacks: [{ model: 'claude-opus-4-8' }],
-      output_config: { effort: 'low' },
-      system: LISTING_SYSTEM,
-      messages: [
-        {
-          role: 'user',
-          content: JSON.stringify({
-            item: {
-              name: item.name,
-              quantityAvailable: item.qty,
-              description: item.description,
-              currentRetailPrice: item.currentRetail,
-              askingPrice: asking,
-            },
-            sellerNotes: extra ?? null,
-          }),
-        },
-      ],
-    });
-
-    if (response.stop_reason === 'refusal') {
-      throw new HttpError(502, 'The model declined this request — use the template draft instead');
-    }
-    const text = response.content
-      .filter((b): b is Anthropic.Beta.BetaTextBlock => b.type === 'text')
-      .map((b) => b.text)
-      .join('\n')
-      .trim();
-    if (!text) throw new HttpError(502, 'The model returned no text — try again');
-    res.json({ text, model: response.model });
+    const b = (req.body ?? {}) as { instructions?: string; style?: string };
+    res.json({ text: await aiDraft(Number(req.params.itemId), b.style ?? 'casual', b.instructions), model: AI_MODEL });
   });
 
   // ---- MA tax estimate ----
@@ -824,5 +848,5 @@ Voice: warm, direct, trustworthy local seller — not corporate, not spammy, no 
     res.status(status).json({ error: err instanceof Error ? err.message : 'Internal error' });
   });
 
-  return api;
+  return { router: api, aiDraft };
 }
