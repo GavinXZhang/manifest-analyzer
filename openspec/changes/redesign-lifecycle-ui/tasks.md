@@ -1,10 +1,10 @@
 ## 1. Deploy wiring and frontend scaffold
 
-- [ ] 1.1 Link the Vercel project to the GitHub repo; set build command `npm run build`; remove `api/app.mjs` from git and add it to `.gitignore`; confirm a push deploys
-- [ ] 1.2 Scaffold `web/` with Vite + React + TypeScript; `npm run build` produces `web/dist/` and the esbuild API bundle; `src/ui/server.ts` and the Vercel entry serve `web/dist/` with the old SPA still reachable at `/legacy`
-- [ ] 1.3 Add `vite-plugin-pwa` with manifest, icons, shell precache, `/api/*` network-only, and the "new version — reload" prompt
-- [ ] 1.4 App shell: rail navigation (Today, Lots, Receive, Inventory, Money, Settings), bottom tab bar at phone widths, design tokens from design.md §12, IBM Plex Sans, base components (button, pill, chip, card, table, segmented control, drawer)
-- [ ] 1.5 Typed API client in `web/src/api/` covering existing routes; password gate screen
+- [x] 1.1 Link the Vercel project to the GitHub repo; set build command `npm run build`; remove `api/app.mjs` from git and add it to `.gitignore`; confirm a push deploys
+- [x] 1.2 Scaffold `web/` with Vite + React + TypeScript; `npm run build` produces `web/dist/` and the esbuild API bundle; `src/ui/server.ts` and the Vercel entry serve `web/dist/` with the old SPA still reachable at `/legacy`
+- [x] 1.3 Add `vite-plugin-pwa` with manifest, icons, shell precache, `/api/*` network-only, and the "new version — reload" prompt
+- [x] 1.4 App shell: rail navigation (Today, Lots, Receive, Inventory, Money, Settings), bottom tab bar at phone widths, design tokens from design.md §12, IBM Plex Sans, base components (button, pill, chip, card, table, segmented control, drawer)
+- [x] 1.5 Typed API client in `web/src/api/` covering existing routes; password gate screen
 
 ## 2. Schema migration and lifecycle
 
@@ -16,8 +16,8 @@
 ## 3. Lots board (replaces Lots + Compare)
 
 - [x] 3.1 `GET /api/lots/board` returning lots grouped by stage with per-column totals and days-in-stage
-- [ ] 3.2 Board view with stage columns, cards (verdict / max bid / landed unit cost / seller / units), overdue check-in tint, "Check in →" on won lots
-- [ ] 3.3 Table view with the Compare columns sorted by landed unit price; Board/Table toggle; seller filter and sort
+- [x] 3.2 Board view with stage columns, cards (verdict / max bid / landed unit cost / seller / units), overdue check-in tint, "Check in →" on won lots
+- [x] 3.3 Table view with the Compare columns sorted by landed unit price; Board/Table toggle; seller filter and sort
 - [x] 3.4 Port the lot detail page (mapping, context, comps, analysis, outcome) to React components without behavior changes; remove Lots and Compare from the legacy nav
 
 ## 4. Receive and salvage
@@ -53,7 +53,7 @@
 ## 8. Today
 
 - [x] 8.1 `GET /api/today` composing punch state, check-in lots, month-to-date scorecards, aging items, upcoming events, recent sales; runs recurring posting first
-- [ ] 8.2 Today screen (desktop and phone): time card, needs check-in, month money, aging list with cut-price, coming up with Google Calendar subscribe + add links, sold this week, quick sell; app opens on Today; remove Calendar from the legacy nav
+- [x] 8.2 Today screen (desktop and phone): time card, needs check-in, month money, aging list with cut-price, coming up with Google Calendar subscribe + add links, sold this week, quick sell; app opens on Today; remove Calendar from the legacy nav
 
 ## 9. Settings
 
@@ -63,6 +63,6 @@
 
 ## 10. Cleanup and hardening
 
-- [ ] 10.1 Delete `src/ui/public/`, the `/legacy` route, and the `storage_units`, `work_hours`, `timer`, `listing_library` tables and their stores/routes; update tests
-- [ ] 10.2 README: new architecture, `web/` build, PWA install steps, GitHub → Vercel deploy, `vercel env pull` for local-against-Turso; update `lot-analysis-view.png`
-- [ ] 10.3 Full run: `npm test`, `npm run typecheck`, `npm run build`; walk the first real lot end to end on the deployed app (check-in → inventory → listing → sale) and on a phone
+- [x] 10.1 Delete `src/ui/public/`, the `/legacy` route, and the `storage_units`, `work_hours`, `timer`, `listing_library` tables and their stores/routes; update tests
+- [x] 10.2 README: new architecture, `web/` build, PWA install steps, GitHub → Vercel deploy, `vercel env pull` for local-against-Turso; update `lot-analysis-view.png`
+- [x] 10.3 Full run: `npm test`, `npm run typecheck`, `npm run build`; walk the first real lot end to end on the deployed app (check-in → inventory → listing → sale) and on a phone

@@ -12,8 +12,6 @@ export interface AppOptions {
   password?: string | null;
   /** Where the built web app lives (defaults to ../../web/dist). */
   publicDir?: string;
-  /** The previous vanilla SPA, served at /legacy until the new app reaches parity. */
-  legacyDir?: string | null;
 }
 
 export function createApp(db: Db, options: AppOptions = {}): express.Express {
@@ -37,14 +35,11 @@ export function createApp(db: Db, options: AppOptions = {}): express.Express {
   app.use('/api', createLifecycleApi(db, { aiDraft: legacyApi.aiDraft }));
   app.use('/api', legacyApi.router);
 
-  const legacyDir = options.legacyDir === undefined ? join(import.meta.dirname, 'public') : options.legacyDir;
-  if (legacyDir && existsSync(legacyDir)) app.use('/legacy', express.static(legacyDir));
-
   const publicDir = options.publicDir ?? join(import.meta.dirname, '..', '..', 'web', 'dist');
   if (existsSync(publicDir)) {
     app.use(express.static(publicDir, { index: 'index.html' }));
     // SPA fallback: any non-API, non-file path renders the app shell.
-    app.get(/^\/(?!api\/|legacy\/).*/, (req, res, next) => {
+    app.get(/^\/(?!api\/).*/, (req, res, next) => {
       if (req.method !== 'GET' || req.path.includes('.')) return next();
       res.sendFile(join(publicDir, 'index.html'));
     });

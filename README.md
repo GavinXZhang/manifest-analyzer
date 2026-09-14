@@ -13,7 +13,7 @@ through check-in, salvage, listing on your selling channels, sales, and the mone
 ![SQLite / libSQL](https://img.shields.io/badge/storage-SQLite%20%2F%20libSQL-003B57?logo=sqlite&logoColor=white)
 ![PWA](https://img.shields.io/badge/PWA-installable-5A0FC8)
 
-![Lot analysis view](lot-analysis-view.png)
+![Today screen](lot-analysis-view.png)
 
 ---
 

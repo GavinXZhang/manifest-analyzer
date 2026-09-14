@@ -138,7 +138,9 @@ CREATE TABLE IF NOT EXISTS events (
 );
 CREATE INDEX IF NOT EXISTS idx_events_date ON events(date);
 
--- Warehouse / storage-unit rent tracking.
+-- Legacy tables (storage_units, work_hours, timer) are still created so the
+-- one-time migration in migrate.ts can read them on older databases; nothing
+-- writes to them anymore.
 CREATE TABLE IF NOT EXISTS storage_units (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   name TEXT NOT NULL,
@@ -158,15 +160,6 @@ CREATE TABLE IF NOT EXISTS work_hours (
   created_at TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_work_hours_date ON work_hours(date);
-
--- Free-standing description library: past/pasted FB listings kept as style
--- references, independent of inventory items.
-CREATE TABLE IF NOT EXISTS listing_library (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  title TEXT NOT NULL,
-  text TEXT NOT NULL,
-  created_at TEXT NOT NULL
-);
 
 -- The running work timer (at most one, server-side so it survives page closes).
 CREATE TABLE IF NOT EXISTS timer (

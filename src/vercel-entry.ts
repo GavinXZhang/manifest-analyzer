@@ -22,7 +22,6 @@ const appPromise = (async () => {
   return createApp(db, {
     password: process.env.MA_PASSWORD ?? null,
     publicDir: join(process.cwd(), 'web', 'dist'),
-    legacyDir: join(process.cwd(), 'src', 'ui', 'public'),
   });
 })();
 

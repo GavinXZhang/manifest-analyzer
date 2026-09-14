@@ -56,21 +56,7 @@ import {
   type InventoryItem,
 } from '../store/inventory.ts';
 import { addEvent, deleteEvent, listEvents, EVENT_KINDS, type EventKind } from '../store/events.ts';
-import {
-  addStorageUnit,
-  deleteStorageUnit,
-  listStorageUnits,
-  getStorageUnit,
-  addWorkEntry,
-  deleteWorkEntry,
-  listWorkEntries,
-  totalHours,
-  getTimer,
-  startTimer,
-  clearTimer,
-} from '../store/workspace.ts';
 import Anthropic from '@anthropic-ai/sdk';
-import { addLibraryEntry, deleteLibraryEntry, listLibraryEntries } from '../store/library.ts';
 import { buildIcs } from './ics.ts';
 import { parseManifest } from '../ingest/ingest.ts';
 import { proposeMapping, applySavedMapping } from '../ingest/mapping.ts';
@@ -608,132 +594,8 @@ export function createApi(db: Db): LegacyApi {
       .send(buildIcs(await listEvents(db)));
   });
 
-  // ---- storage units & work hours ----
-
-  api.get('/workspace', async (_req, res) => {
-    const [units, hours, hoursTotal, summary, timer] = await Promise.all([
-      listStorageUnits(db),
-      listWorkEntries(db),
-      totalHours(db),
-      ledgerSummary(db),
-      getTimer(db),
-    ]);
-    res.json({
-      units,
-      hours,
-      totalHours: hoursTotal,
-      netProfit: summary.netProfit,
-      profitPerHour: hoursTotal > 0 ? Math.round((summary.netProfit / hoursTotal) * 100) / 100 : null,
-      timer,
-    });
-  });
-
-  // ---- work timer (start / stop-confirm / discard) ----
-
-  api.post('/timer/start', async (req, res) => {
-    const b = req.body as { note?: string | null; lotId?: number | null };
-    try {
-      res.json(await startTimer(db, { note: b.note ?? null, lotId: b.lotId ?? null }));
-    } catch (err) {
-      throw new HttpError(409, err instanceof Error ? err.message : 'Timer already running');
-    }
-  });
-
-  // Save the confirmed hours (user can correct the number in case they forgot
-  // to stop the timer) and clear the timer in one step.
-  api.post('/timer/commit', async (req, res) => {
-    const b = req.body as { hours?: number; date?: string; note?: string | null; lotId?: number | null };
-    if (typeof b.hours !== 'number' || typeof b.date !== 'string') {
-      throw new HttpError(400, 'hours (number) and date (YYYY-MM-DD) are required');
-    }
-    try {
-      const entry = await addWorkEntry(db, {
-        date: b.date,
-        hours: b.hours,
-        note: b.note ?? null,
-        lotId: b.lotId ?? null,
-      });
-      await clearTimer(db);
-      res.json(entry);
-    } catch (err) {
-      badRequest(err, 'Invalid hours entry');
-    }
-  });
-
-  api.post('/timer/discard', async (_req, res) => {
-    await clearTimer(db);
-    res.json({ ok: true });
-  });
-
-  api.post('/storage-units', async (req, res) => {
-    const b = req.body as { name?: string; monthlyCost?: number; dueDay?: number; note?: string };
-    if (typeof b.name !== 'string' || typeof b.monthlyCost !== 'number' || typeof b.dueDay !== 'number') {
-      throw new HttpError(400, 'name, monthlyCost, and dueDay are required');
-    }
-    try {
-      res.json(await addStorageUnit(db, { name: b.name, monthlyCost: b.monthlyCost, dueDay: b.dueDay, note: b.note ?? null }));
-    } catch (err) {
-      badRequest(err, 'Invalid storage unit');
-    }
-  });
-
-  api.delete('/storage-units/:id', async (req, res) => {
-    await deleteStorageUnit(db, Number(req.params.id));
-    res.json({ ok: true });
-  });
-
-  // Record this month's rent for a unit as a storage expense in the ledger.
-  api.post('/storage-units/:id/pay', async (req, res) => {
-    const unit = await getStorageUnit(db, Number(req.params.id));
-    if (!unit) throw new HttpError(404, `No storage unit ${req.params.id}`);
-    const expense = await addExpense(db, {
-      amount: unit.monthlyCost,
-      category: 'storage',
-      note: `${unit.name} rent`,
-      spentAt: new Date().toISOString().slice(0, 10),
-    });
-    res.json(expense);
-  });
-
-  api.post('/hours', async (req, res) => {
-    const b = req.body as { date?: string; hours?: number; note?: string; lotId?: number | null };
-    if (typeof b.date !== 'string' || typeof b.hours !== 'number') {
-      throw new HttpError(400, 'date (YYYY-MM-DD) and hours are required');
-    }
-    try {
-      res.json(await addWorkEntry(db, { date: b.date, hours: b.hours, note: b.note ?? null, lotId: b.lotId ?? null }));
-    } catch (err) {
-      badRequest(err, 'Invalid hours entry');
-    }
-  });
-
-  api.delete('/hours/:id', async (req, res) => {
-    await deleteWorkEntry(db, Number(req.params.id));
-    res.json({ ok: true });
-  });
-
-  // ---- description library ----
-
-  api.get('/library', async (_req, res) => {
-    res.json({ entries: await listLibraryEntries(db) });
-  });
-
-  api.post('/library', async (req, res) => {
-    const b = req.body as { title?: string; text?: string };
-    if (typeof b.title !== 'string' || typeof b.text !== 'string') {
-      throw new HttpError(400, 'title and text are required');
-    }
-    try {
-      res.json(await addLibraryEntry(db, b.title, b.text));
-    } catch (err) {
-      badRequest(err, 'Invalid library entry');
-    }
-  });
-
-  api.delete('/library/:id', async (req, res) => {
-    await deleteLibraryEntry(db, Number(req.params.id));
-    res.json({ ok: true });
-  });
+  // Storage units, hours, the timer and the description library moved to
+  // recurring expenses, punches and per-item drafts (see api-lifecycle.ts).
 
   // ---- AI listing drafts (Claude) ----
 
