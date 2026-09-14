@@ -10,11 +10,14 @@
   "scripts": {
     "start": "node src/ui/server.ts",
     "dev": "node --watch src/ui/server.ts",
+    "dev:web": "vite --config web/vite.config.ts",
     "test": "node --test \"src/**/*.test.ts\"",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p web/tsconfig.json",
     "fixtures": "node scripts/make-xlsx-fixture.ts",
+    "build:web": "vite build --config web/vite.config.ts",
     "bundle:vercel": "esbuild src/vercel-entry.ts --bundle --platform=node --format=esm --target=node22 --packages=external --outfile=api/app.mjs",
-    "deploy": "npm run bundle:vercel && npx vercel deploy --prod --yes"
+    "build": "npm run build:web && npm run bundle:vercel",
+    "deploy": "npm run build && npx vercel deploy --prod --yes"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.120.0",
