@@ -4,7 +4,7 @@
   "rewrites": [{ "source": "/(.*)", "destination": "/api/app" }],
   "functions": {
     "api/app.mjs": {
-      "includeFiles": "web/dist/**",
+      "includeFiles": "{web/dist/**,dist/**}",
       "maxDuration": 30
     }
   }

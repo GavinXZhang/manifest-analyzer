@@ -8,6 +8,6 @@ data/
 .vercel
 .env*
 .playwright-mcp/
-api/app.mjs
+dist/
 web/dist/
 web/dev-dist/
