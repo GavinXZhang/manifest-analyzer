@@ -1,0 +1,6 @@
+data/
+fixtures/
+openspec/
+scripts/
+**/*.test.ts
+.playwright-mcp/
