@@ -174,8 +174,12 @@ function monthsIn(w: Window, today: string): string[] {
   return out;
 }
 
-const monthLabel = (m: string): string =>
-  new Date(Date.UTC(Number(m.slice(0, 4)), Number(m.slice(5, 7)) - 1, 1)).toLocaleString('en-US', { month: 'short', year: '2-digit', timeZone: 'UTC' });
+/** "Sep" for the current year, "Sep ’25" otherwise — never something that reads like a day. */
+const monthLabel = (m: string): string => {
+  const d = new Date(Date.UTC(Number(m.slice(0, 4)), Number(m.slice(5, 7)) - 1, 1));
+  const mon = d.toLocaleString('en-US', { month: 'short', timeZone: 'UTC' });
+  return m.slice(0, 4) === String(new Date().getUTCFullYear()) ? mon : `${mon} ’${m.slice(2, 4)}`;
+};
 
 export async function report(db: Db, profile: Profile, kind: ReportKind, period: Period, today: string, lotId: number | null = null): Promise<Report> {
   const w = resolveWindow(period, today);

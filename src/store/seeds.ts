@@ -67,7 +67,7 @@ export const PARTS_BOOK_SEEDS: FamilySeed[] = [
   { family: 'LG CordZero', keywords: ['CORDZERO'], parts: [
     { name: 'Battery', low: 40, high: 60 }, { name: 'Charging tower', low: 50, high: 80 }, { name: 'Power nozzle', low: 40, high: 60 },
   ] },
-  { family: 'Samsung Jet', keywords: ['SAMSUNG', 'JET'], parts: [
+  { family: 'Samsung Jet', keywords: ['SAMSUNG'], parts: [
     { name: 'Battery', low: 50, high: 80 }, { name: 'Brushes', low: 30, high: 50 },
   ] },
   { family: 'Tineco Pet Cyclone', keywords: ['TINECO', 'CYCLONE'], parts: [

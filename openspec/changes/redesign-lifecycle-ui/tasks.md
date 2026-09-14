@@ -18,7 +18,7 @@
 - [x] 3.1 `GET /api/lots/board` returning lots grouped by stage with per-column totals and days-in-stage
 - [ ] 3.2 Board view with stage columns, cards (verdict / max bid / landed unit cost / seller / units), overdue check-in tint, "Check in →" on won lots
 - [ ] 3.3 Table view with the Compare columns sorted by landed unit price; Board/Table toggle; seller filter and sort
-- [ ] 3.4 Port the lot detail page (mapping, context, comps, analysis, outcome) to React components without behavior changes; remove Lots and Compare from the legacy nav
+- [x] 3.4 Port the lot detail page (mapping, context, comps, analysis, outcome) to React components without behavior changes; remove Lots and Compare from the legacy nav
 
 ## 4. Receive and salvage
 
@@ -26,7 +26,7 @@
 - [x] 4.2 `src/valuation/families.ts`: parts-book matching of manifest lines; `src/calc/salvage.ts`: per-family pools, cannibalisation count, floors, lot floor; unit tests against the vacuum manifest fixture
 - [x] 4.3 Transfer routine "send working units to inventory" (idempotent per manifest line, cost = landed unit cost, kind `unit`, family) and "create parts items" (kind `parts`, cost 0); routes and tests
 - [x] 4.4 `GET /api/lots/:id/salvage-plan`; "Finish check-in" → stage `received`
-- [ ] 4.5 Receive screen: KPI strip, manifest-line table with count steppers and notes, unchecked filter, salvage plan panel, transfer buttons; phone layout one line at a time with ≥44px controls
+- [x] 4.5 Receive screen: KPI strip, manifest-line table with count steppers and notes, unchecked filter, salvage plan panel, transfer buttons; phone layout one line at a time with ≥44px controls
 - [x] 4.6 Parts book store + `GET/PUT /api/parts-book`; seed from the exploration salvage table with the "estimate" label
 
 ## 5. Inventory, channels, listings
@@ -36,19 +36,19 @@
 - [x] 5.3 Sales gain `inventory_id`, `channel_id`, `fees`; "mark sold" endpoint decrements `qty_sold`, marks the listing sold, records fees; first listing on a lot's item → stage `selling`; all sold → close suggestion
 - [x] 5.4 `src/calc/aging.ts`: days on shelf, carrying cost per item-day, accrued cost, threshold flags; "cut price" endpoint updating active asks; unit tests
 - [x] 5.5 Listing drafts: templates per draft style; wire the existing Claude drafting endpoint when a key is configured
-- [ ] 5.6 Inventory screen: filters (On hand / Listed / Sold / Parts, channel, lot, search), KPIs, table with condition, cost, days, channel chips, best net, derived status, aging tints; row drawer with per-channel nets, add/end listing, draft, pricing (floor/target/ceiling), comps, mark sold, cut price; remove Inventory and Listings from the legacy nav
+- [x] 5.6 Inventory screen: filters (On hand / Listed / Sold / Parts, channel, lot, search), KPIs, table with condition, cost, days, channel chips, best net, derived status, aging tints; row drawer with per-channel nets, add/end listing, draft, pricing (floor/target/ceiling), comps, mark sold, cut price; remove Inventory and Listings from the legacy nav
 
 ## 6. Time card
 
 - [x] 6.1 `src/store/punches.ts`: clock in (refuse if one running), clock out, switch task, manual add/edit/delete; routes under `/api/punches`; unit tests
 - [x] 6.2 Aggregations: hours per day/week, by category, profit per hour for a period, labor cost per lot; tests
-- [ ] 6.3 Time card UI: running state with elapsed time, clock in/out/switch, week grid with previous-week stepping, hours-by-category table, punch log with edit; phone variant
+- [x] 6.3 Time card UI: running state with elapsed time, clock in/out/switch, week grid with previous-week stepping, hours-by-category table, punch log with edit; phone variant
 
 ## 7. Money
 
 - [x] 7.1 `GET /api/reports/:kind` for revenue-goal, net, funnel, cycle, hours, storage with period (30d/90d/ytd/all), by, lot; previous-period comparison for scorecards; fixture-based tests
-- [ ] 7.2 Chart components on one shared frame/axis/tooltip: column with ghost target, stacked column, funnel with stage-to-stage %, horizontal bar (cycle), day columns (hours); table view for each
-- [ ] 7.3 Money screen: period + lot controls, scorecards with delta, chart switcher, time card (from 6.3), storage & recurring card (add/edit, next due, burn), predicted-vs-actual with labor and cycle, calibration link, tax set-aside; remove History, Storage and Taxes from the legacy nav
+- [x] 7.2 Chart components on one shared frame/axis/tooltip: column with ghost target, stacked column, funnel with stage-to-stage %, horizontal bar (cycle), day columns (hours); table view for each
+- [x] 7.3 Money screen: period + lot controls, scorecards with delta, chart switcher, time card (from 6.3), storage & recurring card (add/edit, next due, burn), predicted-vs-actual with labor and cycle, calibration link, tax set-aside; remove History, Storage and Taxes from the legacy nav
 
 ## 8. Today
 
@@ -57,9 +57,9 @@
 
 ## 9. Settings
 
-- [ ] 9.1 Settings screen with sections: Buyer rules (existing fields + revenue goal, aging days, cut %, check-in overdue days, hourly value), Fees & recovery rates (existing), Selling channels (table with fee rules, categories, draft style, enable), Salvage parts book (families, match rules, parts, ranges), Integrations (ICS URL copy, Claude status, password), Data & backup (CSV exports)
+- [x] 9.1 Settings screen with sections: Buyer rules (existing fields + revenue goal, aging days, cut %, check-in overdue days, hourly value), Fees & recovery rates (existing), Selling channels (table with fee rules, categories, draft style, enable), Salvage parts book (families, match rules, parts, ranges), Integrations (ICS URL copy, Claude status, password), Data & backup (CSV exports)
 - [x] 9.2 CSV export endpoints for lots, inventory, listings, sales, expenses, punches
-- [ ] 9.3 Remove Profile from the legacy nav
+- [x] 9.3 Remove Profile from the legacy nav
 
 ## 10. Cleanup and hardening
 

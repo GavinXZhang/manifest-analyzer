@@ -113,6 +113,7 @@ main.page { flex: 1; min-width: 0; padding: 26px 32px 48px; display: flex; flex-
 .grid-5 { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; }
 .split { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 16px; align-items: start; }
 .split.wide { grid-template-columns: minmax(0, 5fr) minmax(0, 3fr); }
+@media (max-width: 1500px) { .split.wide { grid-template-columns: minmax(0, 1fr); } }
 
 .micro { font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-3); }
 .muted { color: var(--ink-2); }
@@ -220,12 +221,13 @@ textarea.input { height: auto; padding: 8px 10px; min-height: 90px; resize: vert
 
 /* ---------- counters (receive) ---------- */
 .cnt { display: inline-flex; align-items: center; gap: 0; border: 1px solid #d5d9df; border-radius: 4px; background: var(--surface); }
-.cnt input { width: 44px; height: 28px; border: 0; text-align: center; background: transparent; font-weight: 500; }
+.cnt input { width: 38px; height: 28px; border: 0; text-align: center; background: transparent; font-weight: 500; -moz-appearance: textfield; appearance: textfield; }
+.cnt input::-webkit-outer-spin-button, .cnt input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
 .cnt input:focus { outline: none; }
 .cnt.weak { border-color: var(--warn-line); background: #fffaf0; }
 .cnt.dead { border-color: var(--bad-line); background: #fff7f7; }
 .cnt.lg input { width: 56px; height: 44px; font-size: 16px; }
-.cnt button { width: 28px; height: 28px; border: 0; background: transparent; cursor: pointer; color: var(--ink-2); font-size: 15px; }
+.cnt button { width: 24px; height: 28px; border: 0; background: transparent; cursor: pointer; color: var(--ink-2); font-size: 15px; }
 .cnt.lg button { width: 44px; height: 44px; font-size: 20px; }
 
 /* ---------- charts ---------- */

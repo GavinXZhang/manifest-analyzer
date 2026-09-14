@@ -64,21 +64,25 @@ function passwordsMatch(supplied: string, actual: string): boolean {
 const LOGIN_PAGE = `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>
 <title>Sign in — Manifest Analyzer</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&display=swap"/>
 <style>
-  body { margin:0; min-height:100vh; display:grid; place-items:center; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
-         background:linear-gradient(180deg,#0d1322 0%,#141c33 100%); }
-  .box { background:#fff; border-radius:16px; padding:34px 38px; width:min(360px,90vw); box-shadow:0 18px 48px rgba(0,0,0,.4); }
-  h1 { font-size:18px; margin:0 0 4px; color:#12161f; letter-spacing:-.01em; }
-  p { margin:0 0 18px; font-size:13px; color:#8a93a3; }
-  input { font:inherit; width:100%; box-sizing:border-box; padding:10px 12px; border:1px solid #d7dce6; border-radius:10px; }
-  input:focus { outline:none; border-color:#4f46e5; box-shadow:0 0 0 3px rgba(79,70,229,.16); }
-  button { font:inherit; font-weight:650; width:100%; margin-top:12px; padding:10px; border:0; border-radius:10px;
-           background:#4f46e5; color:#fff; cursor:pointer; }
-  button:hover { background:#4338ca; }
-  .err { color:#c62f2f; font-size:13px; font-weight:600; margin:10px 0 0; min-height:18px; }
+  body { margin:0; min-height:100vh; display:grid; place-items:center; font-family:'IBM Plex Sans',system-ui,-apple-system,"Segoe UI",sans-serif;
+         background:#14213a; color:#172033; }
+  .box { background:#fff; border-radius:8px; padding:30px 32px; width:min(360px,90vw); border:1px solid #e3e6ea; }
+  .brand { display:flex; align-items:center; gap:10px; margin-bottom:18px; font-weight:600; font-size:15px; }
+  .brand span { display:grid; place-items:center; width:30px; height:30px; border-radius:6px; background:#1b6a99; }
+  h1 { font-size:16px; margin:0 0 4px; letter-spacing:-.01em; }
+  p { margin:0 0 16px; font-size:13px; color:#5f6b7a; }
+  input { font:inherit; width:100%; box-sizing:border-box; height:40px; padding:0 12px; border:1px solid #d5d9df; border-radius:6px; }
+  input:focus { outline:none; border-color:#1b6a99; box-shadow:0 0 0 3px rgba(27,106,153,.15); }
+  button { font:inherit; font-weight:600; width:100%; margin-top:12px; height:40px; border:0; border-radius:6px;
+           background:#1b6a99; color:#fff; cursor:pointer; }
+  button:hover { background:#134d70; }
+  .err { color:#b13a34; font-size:13px; font-weight:500; margin:10px 0 0; min-height:18px; }
 </style></head><body>
 <form class="box" id="f">
-  <h1>Manifest Analyzer</h1>
+  <div class="brand"><span><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8.5 12 3 3 8.5v7L12 21l9-5.5v-7Z"/><path d="M3 8.5 12 14l9-5.5"/><path d="M12 14v7"/></svg></span>Manifest Analyzer</div>
+  <h1>Sign in</h1>
   <p>Enter your password to continue.</p>
   <input id="pw" type="password" autocomplete="current-password" autofocus placeholder="Password" />
   <button type="submit">Sign in</button>

@@ -237,11 +237,14 @@ export function createLifecycleApi(db: Db, opts: { aiDraft?: (itemId: number, st
     return item;
   }
 
-  /** First listing on a lot's item moves the lot into Selling. */
+  /**
+   * First listing on a received lot's item moves the lot into Selling. A lot
+   * still in Won stays there — check-in isn't finished, and Today should keep
+   * nagging about it even if a few units are already listed.
+   */
   async function bumpLotToSelling(lotId: number | null): Promise<void> {
     if (lotId === null) return;
-    const stage = await getStage(db, lotId);
-    if (stage === 'received' || stage === 'won') await setStage(db, lotId, 'selling');
+    if ((await getStage(db, lotId)) === 'received') await setStage(db, lotId, 'selling');
   }
 
   api.post('/inventory/:id/listings', async (req, res) => {
@@ -442,7 +445,8 @@ export function createLifecycleApi(db: Db, opts: { aiDraft?: (itemId: number, st
     const t = today(profile);
     await postDueRecurring(db, t);
     const summary = await moneySummary(db, profile, periodOf(req.query.period), t, lotOf(req.query.lot));
-    const hourly = profile.hourlyValue ?? summary.profitPerHour.value;
+    // Labor is costed at the configured rate, else trailing profit/hour — never a negative rate.
+    const hourly = profile.hourlyValue ?? Math.max(0, summary.profitPerHour.value);
     const year = t.slice(0, 4);
     const [sales, expenses] = await Promise.all([listSales(db), listExpenses(db)]);
     const ytdRev = sales.filter((s) => s.soldAt.startsWith(year)).reduce((a, s) => a + s.amount - s.fees, 0);

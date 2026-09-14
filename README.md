@@ -1,88 +1,83 @@
 # Manifest Analyzer
 
-**Manifest in, walk-away max bid out.**
+**Manifest in, walk-away max bid out — then receive, sell, and track the lot to the end.**
 
-A local-first analyzer for B-Stock liquidation lots. Feed it a manifest you
-downloaded from a listing plus a few manually entered listing details; it gives
-you a valuation, a **walk-away max bid**, a landed unit price, and a
-plain-language explanation of why the lot is (or isn't) a deal.
+A local-first app for buying B-Stock liquidation lots and running the resale. Feed it a
+manifest you downloaded from a listing plus a few manually entered details; it gives you a
+valuation, a **walk-away max bid**, and a landed unit price. When you win, it walks the lot
+through check-in, salvage, listing on your selling channels, sales, and the money.
 
 ![Node ≥ 22.5](https://img.shields.io/badge/node-%E2%89%A5%2022.5-339933?logo=node.js&logoColor=white)
 ![TypeScript](https://img.shields.io/badge/TypeScript-native-3178C6?logo=typescript&logoColor=white)
+![React + Vite](https://img.shields.io/badge/web-React%20%2B%20Vite-646CFF?logo=vite&logoColor=white)
 ![SQLite / libSQL](https://img.shields.io/badge/storage-SQLite%20%2F%20libSQL-003B57?logo=sqlite&logoColor=white)
-![Tests](https://img.shields.io/badge/tests-103%20passing-brightgreen)
+![PWA](https://img.shields.io/badge/PWA-installable-5A0FC8)
 
 ![Lot analysis view](lot-analysis-view.png)
 
 ---
 
-## Why
+## The lifecycle
 
-Buying liquidation lots profitably means answering three questions per listing,
-fast:
+Every lot moves through one thread, and each screen owns one stage:
 
-1. **What is this lot actually worth to me?**
-2. **What is the most I can bid?**
-3. **Why is (or isn't) this a good deal?**
+```
+Analyzing → Bid placed → Won → Received → Selling → Closed
+  Lots        Lots       Receive   Inventory   Money
+```
 
-That usually happens by hand in spreadsheets, and most bad buys come from
-skipping the math or trusting the listing's "extended retail" number. This tool
-does the math the same way every time and shows its work.
+| Screen | What it does |
+| --- | --- |
+| **Today** | The daily open: time card (clock in/out), the lot waiting for check-in, this month's money, inventory that's aging on the shelf, what's coming up, what sold. |
+| **Lots** | Stage board with column totals; cards show verdict, max bid, landed $/unit; a won lot that isn't checked in turns pink. Table view sorts confirmed lots by landed unit price. Click a card for the full analysis (mapping → context → comps → verdict → outcome). |
+| **Receive** | Check a won lot in against its manifest: per line, how many arrived and how many work / are incomplete / have a weak battery / are dead. Working units flow into Inventory with cost basis = landed unit cost. The **salvage plan** pools dead and weak units by product family, suggests cannibalisation, and lists parts with your own value ranges. |
+| **Inventory** | Items × selling channels. Each listing carries its ask and the channel's fee rule, so you see **net after fees** per channel. Status is derived (unlisted → listed → sold). Days on shelf and a per-item-day carrying cost drive aging alerts and a one-click price cut. Listing drafts per channel (template, or Claude when a key is configured). |
+| **Money** | Scorecards with change vs. the previous period; one chart area with a switcher — revenue vs. goal, net profit, funnel, cycle time, hours, storage; the **time card** (punch clock, week grid, hours by task, profit per hour); storage and other recurring costs that post themselves; predicted vs. actual per lot with labor and cycle time; tax set-aside. |
+| **Settings** | Buyer rules, fees & recovery rates, selling channels, the salvage parts book, integrations (Google Calendar feed, Claude drafts, password), CSV exports. |
 
-## Features
-
-- **Manifest ingestion:** `.xlsx` / `.csv` from any storefront. Header
-  detection and column auto-mapping, with a confirmation screen for low-confidence
-  mappings that is remembered per seller.
-- **Comps valuation:** paste recent *sold* prices for top-value items. Items
-  without comps fall back to a conservative MSRP floor based on condition
-  recovery rates.
-- **Bid calculator:** pure, deterministic math working backwards from expected
-  revenue → selling costs → required profit → freight → buyer's premium → max bid.
-- **Grail-risk detection:** when >40% of the value sits in ≤3 items, the bid is
-  computed from the grails-excluded valuation.
-- **Deal rationale:** plain-language breakdown covering value composition,
-  freight impact, seasonality, competition, and valuation confidence.
-- **Buyer profile:** zip, max spend, required profit, acceptable conditions,
-  and fee defaults, applied to every analysis automatically.
-- **Lot history & calibration:** log outcomes (won/lost, final price, gross
-  recovered) to self-calibrate recovery rates and predict market closing ranges.
-- **Optional password gate and hosted deploy:** Vercel + Turso.
+Installable as a **PWA**: add it to your phone's home screen and it opens full-screen — clock in, check in a pallet one line at a time, mark something sold.
 
 ## The compliance boundary
 
-This tool **never** connects to bstock.com or any B-Stock-powered marketplace.
-All listing data enters two ways only:
+This tool **never** connects to bstock.com or any B-Stock-powered marketplace, and it calls no
+marketplace APIs. All listing data enters two ways only:
 
 1. **Manifest files you downloaded yourself** via B-Stock's own download button.
 2. **A short manual form** (current bid, end time, freight, premium: about 6 fields).
 
-No scraping, no credential storage, no automated bidding. The tool outputs a
-number; you place the bid.
+Selling channels are fee rules and links, nothing more. No scraping, no credential storage, no
+automated bidding or posting. The tool outputs numbers; you place the bid and post the listing.
 
 ## Quick start
 
-Requires Node ≥ 22.5 (runs TypeScript natively, no build step).
+Requires Node ≥ 22.5 (the server runs TypeScript natively).
 
 ```sh
 git clone https://github.com/GavinXZhang/manifest-analyzer.git
 cd manifest-analyzer
 npm install
-npm start          # http://127.0.0.1:4317 (loopback only)
+npm run build:web   # builds the React app into web/dist
+npm start           # http://127.0.0.1:4317 (loopback only)
 ```
 
-Try it with the sample manifests in [`fixtures/`](fixtures/) (three realistic
-seller layouts).
+For frontend work run the API and the Vite dev server side by side:
 
 ```sh
-npm test           # full test suite (node:test)
-npm run typecheck
-npm run dev        # restart on file changes
+npm run dev         # API with restart-on-change, port 4317
+npm run dev:web     # Vite on http://localhost:5173, proxies /api to 4317
 ```
+
+```sh
+npm test            # node:test suite (server, calc, store, API e2e)
+npm run typecheck   # server + web
+npm run build       # web/dist + the Vercel function bundle
+```
+
+Try it with the sample manifests in [`fixtures/`](fixtures/).
 
 ### Configuration
 
-Data lives in `data/analyzer.db` (a SQLite file, via libSQL). Environment variables:
+Data lives in `data/analyzer.db` (SQLite via libSQL) unless a hosted database is configured.
 
 | Variable | Purpose |
 | --- | --- |
@@ -90,77 +85,63 @@ Data lives in `data/analyzer.db` (a SQLite file, via libSQL). Environment variab
 | `MA_PASSWORD` | Gate everything behind a password login |
 | `TURSO_DATABASE_URL` + `TURSO_AUTH_TOKEN` | Use a hosted Turso database instead of the local file |
 | `MA_DB_URL` / `MA_DB_AUTH_TOKEN` / `MA_DB_PATH` | Point at another libSQL URL or file path |
+| `ANTHROPIC_API_KEY` | Enables Claude-written listing drafts (templates work without it) |
 
-## Workflow
+Schema changes are additive and run on open; one-time data migrations are recorded in the `meta`
+table so they run exactly once per database.
 
-1. **Profile:** set your zip, max spend per lot, required profit (absolute $ or
-   % of revenue), acceptable condition grades, and fee defaults.
-2. **New lot:** upload the manifest. Standard layouts map automatically;
-   anything uncertain gets a mapping screen with best guesses pre-filled.
-3. **Context:** enter current bid, bid count, end time, buyer's premium, and
-   freight (a real quote, or seller zip + pallet count for a rough estimate).
-4. **Comps:** for the top-value items, paste recent *sold* prices (eBay sold
-   listings, etc.). ≥3 comps means high confidence.
-5. **Analysis:** verdict (`BID ≤ $X`, or `PASS` naming the violated constraint
-   or gap), the full budget math, a confidence bar, and the rationale.
-6. **Outcome:** after the auction, log won/lost, the final price, and later the
-   actual gross recovered. History drives recovery-rate calibration (≥3
-   outcomes per seller/category) and closing-range predictions (≥5 finals per
-   segment).
+## Deploy (Vercel + Turso, from GitHub)
 
-## The two numbers that are never the same thing
+The app is one Vercel serverless function (`api/app.mjs`, built by esbuild) that runs the whole
+Express API and serves the built web app, so the password gate covers everything.
 
-- **Your walk-away number:** a budget fact computed backwards from expected
-  revenue, fees, your required profit, freight, and premium. Place one proxy bid
-  at it and stop. B-Stock's proxy bidding and popcorn extensions make sniping
-  pointless.
-- **The market estimate:** a prediction of where similar lots close, from your
-  own logged history. It is shown separately with its own label and never moves
-  your walk-away.
-
-## Conservative by default
-
-- Numbers derived from any estimate render as `~$X *` with the reason listed,
-  so an estimated freight or an MSRP-floor valuation can never pass for a hard number.
-- Grail-heavy lots are bid on the grails-excluded valuation.
-- Any condition grade outside your acceptable set marks the lot PASS with the
-  constraint named (widen the set in Profile if you disagree).
-
-## Deploy (Vercel + Turso)
-
-`api/app.mjs` is an esbuild bundle of the whole Express app (static SPA
-included, so the password gate covers everything), and `vercel.json` routes
-every request to it.
-
-1. Create the database and seed it with your local data:
+1. Create the database:
    ```sh
-   turso db create manifest-analyzer --from-file data/analyzer.db
+   turso db create manifest-analyzer
    turso db show manifest-analyzer --url        # → TURSO_DATABASE_URL
    turso db tokens create manifest-analyzer    # → TURSO_AUTH_TOKEN
    ```
-2. On the Vercel project, set `TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN`, and
-   `MA_PASSWORD` (never deploy without a password).
-3. `npm run deploy` (bundles to `api/app.mjs`, then `vercel deploy --prod`).
+2. In Vercel, **import the GitHub repo** (or Project → Settings → Git → Connect for an existing
+   project). `vercel.json` already sets the build command (`npm run build`) and the function
+   config; leave the framework preset on "Other".
+3. Set `TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN`, and `MA_PASSWORD` for **Production and Preview**
+   (never deploy without a password). Add `ANTHROPIC_API_KEY` if you want Claude drafts.
+4. Push to `main`. Every push deploys; branches get preview URLs against the same database.
+
+To run locally against the production database, pull the variables with
+`vercel env pull .env.production.local --environment=production` and export them before `npm start`.
+
+## The two numbers that are never the same thing
+
+- **Your walk-away number:** a budget fact computed backwards from expected revenue, fees, your
+  required profit, freight, and premium. Place one proxy bid at it and stop.
+- **The market estimate:** a prediction of where similar lots close, from your own logged
+  history. Shown separately with its own label; it never moves your walk-away.
+
+## Conservative by default
+
+- Numbers derived from any estimate render as `~$X *` with the reason listed.
+- Grail-heavy lots (>40% of value in ≤3 items) are bid on the grails-excluded valuation.
+- Any condition grade outside your acceptable set marks the lot PASS with the constraint named.
+- Salvage part values are labeled as your estimates until you confirm them from real sales.
 
 ## Project layout
 
 ```
 src/ingest/      manifest parsing, header detection, column mapping, freight table
-src/valuation/   comps interface (manual v1), recovery rates, grail detection, calibration
-src/calc/        pure bid math + constraint verdicts (fully unit-tested)
-src/reasoning/   template-driven deal rationale
-src/store/       SQLite persistence (profile, lots, comps, outcomes, mappings)
-src/ui/          Express API + no-build vanilla SPA
-api/             bundled Vercel serverless entry
-fixtures/        realistic manifests from three seller layouts (see fixtures/README.md)
-openspec/        spec-driven design docs
+src/valuation/   comps (manual), recovery rates, grail detection, calibration, family matching
+src/calc/        pure math: bid, pricing, fees, landed cost, aging, salvage, tax (unit-tested)
+src/reasoning/   deal rationale + listing draft templates
+src/store/       libSQL persistence: lots, stages, receipts, inventory, listings, channels,
+                 punches, recurring costs, reports, Today; migrations + seeds
+src/ui/          Express API (api.ts + api-lifecycle.ts), auth, ICS feed, server entry
+web/             React + Vite app (routes, components, charts), PWA manifest + service worker
+api/             Vercel function entry (built, not committed)
+fixtures/        sample manifests from three seller layouts
+openspec/        spec-driven change history (proposal → design → specs → tasks)
 ```
-
-Spec-driven via [OpenSpec](openspec/). See
-[`openspec/changes/add-manifest-analyzer/`](openspec/changes/add-manifest-analyzer/)
-for the proposal, design, and per-capability specs.
 
 ## Disclaimer
 
-Not affiliated with or endorsed by B-Stock Solutions. Valuations are estimates;
-you are responsible for your own bids.
+Not affiliated with or endorsed by B-Stock Solutions. Valuations and salvage values are
+estimates; you are responsible for your own bids and listings.
