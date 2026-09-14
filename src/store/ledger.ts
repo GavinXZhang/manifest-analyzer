@@ -14,7 +14,13 @@ export type ExpenseCategory = (typeof EXPENSE_CATEGORIES)[number];
 export interface Sale {
   id: number;
   lotId: number | null;
+  /** Gross amount the buyer paid. */
   amount: number;
+  /** Channel fee taken out of `amount` (0 for local cash sales). */
+  fees: number;
+  qty: number;
+  inventoryId: number | null;
+  channelId: number | null;
   note: string | null;
   /** YYYY-MM-DD */
   soldAt: string;
@@ -42,25 +48,49 @@ interface SaleRow {
   id: number;
   lot_id: number | null;
   amount: number;
+  fees: number;
+  qty: number;
+  inventory_id: number | null;
+  channel_id: number | null;
   note: string | null;
   sold_at: string;
 }
 
-const rowToSale = (r: SaleRow): Sale => ({ id: r.id, lotId: r.lot_id, amount: r.amount, note: r.note, soldAt: r.sold_at });
+const rowToSale = (r: SaleRow): Sale => ({
+  id: r.id,
+  lotId: r.lot_id,
+  amount: r.amount,
+  fees: r.fees ?? 0,
+  qty: r.qty ?? 1,
+  inventoryId: r.inventory_id,
+  channelId: r.channel_id,
+  note: r.note,
+  soldAt: r.sold_at,
+});
 
 export async function addSale(
   db: Db,
-  input: { lotId?: number | null; amount: number; note?: string | null; soldAt: string },
+  input: {
+    lotId?: number | null; amount: number; fees?: number; qty?: number; inventoryId?: number | null;
+    channelId?: number | null; note?: string | null; soldAt: string;
+  },
 ): Promise<Sale> {
   assertEntry(input.amount, input.soldAt);
-  const r = await db.run('INSERT INTO sales (lot_id, amount, note, sold_at) VALUES (?, ?, ?, ?)', [
-    input.lotId ?? null,
-    input.amount,
-    input.note ?? null,
-    input.soldAt,
-  ]);
+  const fees = input.fees ?? 0;
+  if (!Number.isFinite(fees) || fees < 0) throw new Error('fees must be ≥ 0');
+  const qty = input.qty ?? 1;
+  if (!Number.isInteger(qty) || qty < 1) throw new Error('qty must be a positive integer');
+  const r = await db.run(
+    'INSERT INTO sales (lot_id, amount, fees, qty, inventory_id, channel_id, note, sold_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+    [input.lotId ?? null, input.amount, fees, qty, input.inventoryId ?? null, input.channelId ?? null, input.note ?? null, input.soldAt],
+  );
   const row = await db.get<SaleRow>('SELECT * FROM sales WHERE id = ?', [r.lastInsertRowid]);
   return rowToSale(row!);
+}
+
+export async function getSale(db: Db, id: number): Promise<Sale | null> {
+  const row = await db.get<SaleRow>('SELECT * FROM sales WHERE id = ?', [id]);
+  return row ? rowToSale(row) : null;
 }
 
 export async function deleteSale(db: Db, id: number): Promise<void> {

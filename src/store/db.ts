@@ -2,6 +2,7 @@ import { createClient } from '@libsql/client';
 import type { Client, InStatement, InValue } from '@libsql/client';
 import { mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
+import { runDataMigrations } from './migrate.ts';
 
 /**
  * Thin async adapter over libSQL. Works against three backends with one API:
@@ -137,7 +138,9 @@ CREATE TABLE IF NOT EXISTS events (
 );
 CREATE INDEX IF NOT EXISTS idx_events_date ON events(date);
 
--- Warehouse / storage-unit rent tracking.
+-- Legacy tables (storage_units, work_hours, timer) are still created so the
+-- one-time migration in migrate.ts can read them on older databases; nothing
+-- writes to them anymore.
 CREATE TABLE IF NOT EXISTS storage_units (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   name TEXT NOT NULL,
@@ -158,15 +161,6 @@ CREATE TABLE IF NOT EXISTS work_hours (
 );
 CREATE INDEX IF NOT EXISTS idx_work_hours_date ON work_hours(date);
 
--- Free-standing description library: past/pasted FB listings kept as style
--- references, independent of inventory items.
-CREATE TABLE IF NOT EXISTS listing_library (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  title TEXT NOT NULL,
-  text TEXT NOT NULL,
-  created_at TEXT NOT NULL
-);
-
 -- The running work timer (at most one, server-side so it survives page closes).
 CREATE TABLE IF NOT EXISTS timer (
   id INTEGER PRIMARY KEY CHECK (id = 1),
@@ -174,7 +168,120 @@ CREATE TABLE IF NOT EXISTS timer (
   note TEXT,
   lot_id INTEGER
 );
+
+-- One-time data migrations that have already run (see migrate.ts).
+CREATE TABLE IF NOT EXISTS meta (
+  key TEXT PRIMARY KEY,
+  value TEXT NOT NULL
+);
+
+-- Lifecycle: every stage change a lot goes through, for funnel + cycle-time reports.
+CREATE TABLE IF NOT EXISTS lot_stage_events (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  lot_id INTEGER NOT NULL,
+  stage TEXT NOT NULL,
+  at TEXT NOT NULL,
+  inferred INTEGER NOT NULL DEFAULT 0
+);
+CREATE INDEX IF NOT EXISTS idx_stage_events_lot ON lot_stage_events(lot_id);
+
+-- Check-in tallies, one row per manifest line of a won lot.
+CREATE TABLE IF NOT EXISTS receipts (
+  line_item_id INTEGER PRIMARY KEY,
+  lot_id INTEGER NOT NULL,
+  received INTEGER NOT NULL DEFAULT 0,
+  works INTEGER NOT NULL DEFAULT 0,
+  incomplete INTEGER NOT NULL DEFAULT 0,
+  weak_battery INTEGER NOT NULL DEFAULT 0,
+  dead INTEGER NOT NULL DEFAULT 0,
+  note TEXT,
+  updated_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_receipts_lot ON receipts(lot_id);
+
+-- Salvage parts book: product family -> match rules + parts with value ranges.
+CREATE TABLE IF NOT EXISTS parts_book (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  family TEXT NOT NULL UNIQUE,
+  match_json TEXT NOT NULL,
+  parts_json TEXT NOT NULL,
+  estimated INTEGER NOT NULL DEFAULT 1,
+  updated_at TEXT NOT NULL
+);
+
+-- Selling channels (fee rules only — no marketplace APIs are ever called).
+CREATE TABLE IF NOT EXISTS channels (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL UNIQUE,
+  fee_percent REAL NOT NULL DEFAULT 0,
+  fee_fixed REAL NOT NULL DEFAULT 0,
+  shipped_fee_percent REAL,
+  shipped_fee_fixed REAL,
+  categories_json TEXT NOT NULL DEFAULT '[]',
+  draft_style TEXT NOT NULL DEFAULT 'casual',
+  enabled INTEGER NOT NULL DEFAULT 1,
+  sort INTEGER NOT NULL DEFAULT 0
+);
+
+-- An inventory item listed on a channel.
+CREATE TABLE IF NOT EXISTS listings (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  inventory_id INTEGER NOT NULL,
+  channel_id INTEGER NOT NULL,
+  ask REAL NOT NULL,
+  url TEXT,
+  shipped INTEGER NOT NULL DEFAULT 0,
+  status TEXT NOT NULL DEFAULT 'active',
+  listed_at TEXT NOT NULL,
+  ended_at TEXT,
+  last_cut_at TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_listings_inventory ON listings(inventory_id);
+
+-- Time card: a punch is a clock-in with (eventually) a clock-out.
+CREATE TABLE IF NOT EXISTS punches (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  started_at TEXT NOT NULL,
+  ended_at TEXT,
+  category TEXT NOT NULL DEFAULT 'other',
+  lot_id INTEGER,
+  note TEXT,
+  source TEXT NOT NULL DEFAULT 'clock'
+);
+CREATE INDEX IF NOT EXISTS idx_punches_start ON punches(started_at);
+
+-- Recurring costs (storage rent etc.) that post to the ledger on their due day.
+CREATE TABLE IF NOT EXISTS recurring_expenses (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL,
+  amount REAL NOT NULL,
+  category TEXT NOT NULL DEFAULT 'storage',
+  due_day INTEGER NOT NULL,
+  active INTEGER NOT NULL DEFAULT 1,
+  last_period TEXT,
+  note TEXT,
+  created_at TEXT NOT NULL
+);
 `;
+
+/** Columns added after a table first shipped; each ALTER is a no-op once applied. */
+const COLUMN_MIGRATIONS = [
+  'ALTER TABLE line_items ADD COLUMN current_retail REAL',
+  'ALTER TABLE inventory ADD COLUMN listing_text TEXT',
+  'ALTER TABLE inventory ADD COLUMN item_condition TEXT',
+  "ALTER TABLE lots ADD COLUMN stage TEXT NOT NULL DEFAULT 'analyzing'",
+  "ALTER TABLE inventory ADD COLUMN kind TEXT NOT NULL DEFAULT 'unit'",
+  'ALTER TABLE inventory ADD COLUMN family TEXT',
+  'ALTER TABLE inventory ADD COLUMN line_item_id INTEGER',
+  'ALTER TABLE inventory ADD COLUMN received_at TEXT',
+  'ALTER TABLE inventory ADD COLUMN qty_sold INTEGER NOT NULL DEFAULT 0',
+  'ALTER TABLE inventory ADD COLUMN last_cut_at TEXT',
+  'ALTER TABLE sales ADD COLUMN inventory_id INTEGER',
+  'ALTER TABLE sales ADD COLUMN channel_id INTEGER',
+  'ALTER TABLE sales ADD COLUMN fees REAL NOT NULL DEFAULT 0',
+  'ALTER TABLE sales ADD COLUMN qty INTEGER NOT NULL DEFAULT 1',
+  'ALTER TABLE expenses ADD COLUMN recurring_id INTEGER',
+];
 
 export class Db {
   readonly client: Client;
@@ -220,20 +327,13 @@ export async function openDb(url: string, authToken?: string): Promise<Db> {
   const db = new Db(createClient({ url, authToken }));
   await db.exec(SCHEMA);
   // Additive migrations for databases created before these columns existed.
-  try {
-    await db.exec('ALTER TABLE line_items ADD COLUMN current_retail REAL');
-  } catch {
-    // column already exists
+  for (const sql of COLUMN_MIGRATIONS) {
+    try {
+      await db.exec(sql);
+    } catch {
+      // column already exists
+    }
   }
-  try {
-    await db.exec('ALTER TABLE inventory ADD COLUMN listing_text TEXT');
-  } catch {
-    // column already exists
-  }
-  try {
-    await db.exec('ALTER TABLE inventory ADD COLUMN item_condition TEXT');
-  } catch {
-    // column already exists
-  }
+  await runDataMigrations(db);
   return db;
 }

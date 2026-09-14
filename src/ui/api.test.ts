@@ -171,23 +171,6 @@ test('manifest can be attached to an existing lot after creation', async () => {
   assert.equal(empty.status, 400, 'empty body rejected');
 });
 
-test('timer flow: start → commit saves hours and clears', async () => {
-  const start = await send('POST', '/timer/start', { note: 'delivery run' });
-  assert.equal(start.status, 200);
-  assert.equal(start.body.note, 'delivery run');
-
-  const dup = await send('POST', '/timer/start', {});
-  assert.equal(dup.status, 409, 'second timer rejected');
-
-  const commit = await send('POST', '/timer/commit', { hours: 1.5, date: '2026-08-23', note: 'delivery run' });
-  assert.equal(commit.status, 200);
-  assert.equal(commit.body.hours, 1.5);
-
-  const ws = await get('/workspace');
-  assert.equal(ws.body.timer, null, 'timer cleared after commit');
-  assert.ok(ws.body.totalHours >= 1.5);
-});
-
 test('AI listing endpoint: cleanly disabled without an API key', async () => {
   const status = await get('/ai-status');
   assert.equal(status.body.enabled, false, 'no ANTHROPIC_API_KEY in tests');
@@ -200,25 +183,6 @@ test('AI listing endpoint: cleanly disabled without an API key', async () => {
   // Saved listing text round-trips through the inventory update.
   const saved = await send('PUT', `/inventory/${inv.body.id}`, { listingText: 'Great couch, come get it!' });
   assert.equal(saved.body.listingText, 'Great couch, come get it!');
-});
-
-test('description library: add, list, validate, delete', async () => {
-  const bad = await send('POST', '/library', { title: '  ', text: 'x' });
-  assert.equal(bad.status, 400);
-
-  const added = await send('POST', '/library', {
-    title: 'Tisdale sectional — sold Aug 26',
-    text: 'Gorgeous Thomasville sectional, $1,499 at Costco — yours for $1,050!',
-  });
-  assert.equal(added.status, 200);
-  assert.equal(added.body.title, 'Tisdale sectional — sold Aug 26');
-
-  const list = await get('/library');
-  assert.equal(list.body.entries.length, 1);
-  assert.match(list.body.entries[0].text, /Thomasville/);
-
-  await send('DELETE', `/library/${added.body.id}`);
-  assert.equal((await get('/library')).body.entries.length, 0);
 });
 
 test('unmanifested lot: manual items only, flagged unverifiable', async () => {

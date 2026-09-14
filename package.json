@@ -10,22 +10,33 @@
   "scripts": {
     "start": "node src/ui/server.ts",
     "dev": "node --watch src/ui/server.ts",
+    "dev:web": "vite --config web/vite.config.ts",
     "test": "node --test \"src/**/*.test.ts\"",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p web/tsconfig.json",
     "fixtures": "node scripts/make-xlsx-fixture.ts",
+    "build:web": "vite build --config web/vite.config.ts",
     "bundle:vercel": "esbuild src/vercel-entry.ts --bundle --platform=node --format=esm --target=node22 --packages=external --outfile=api/app.mjs",
-    "deploy": "npm run bundle:vercel && npx vercel deploy --prod --yes"
+    "build": "npm run build:web && npm run bundle:vercel",
+    "deploy": "npm run build && npx vercel deploy --prod --yes"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.120.0",
     "@libsql/client": "^0.17.4",
     "exceljs": "^4.4.0",
-    "express": "^5.1.0"
+    "express": "^5.1.0",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "react-router-dom": "^7.18.3"
   },
   "devDependencies": {
     "@types/express": "^5.0.1",
     "@types/node": "^24.3.0",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.1.1",
     "esbuild": "^0.28.2",
-    "typescript": "^5.7.3"
+    "typescript": "^5.7.3",
+    "vite": "^8.3.0",
+    "vite-plugin-pwa": "^1.3.0"
   }
 }
